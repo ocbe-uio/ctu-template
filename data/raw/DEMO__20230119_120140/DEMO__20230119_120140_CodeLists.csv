@@ -1,0 +1,8 @@
+﻿"Format Name","Data Type","Code Value","Code Text"
+"FormatName","DataType","CodeValue","CodeText"
+"SEXFMT","integer","1","Male"
+"SEXFMT","integer","2","Female"
+"CL_TRTF","integer","1","Active"
+"CL_TRTF","integer","2","Placebo"
+"CL_KTRTF","integer","1","Active"
+"CL_KTRTF","integer","2","Placebo"
