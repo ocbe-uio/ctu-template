@@ -27,7 +27,7 @@ library(labelled)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args)==0) {
-  export_name <- "DEMO__20230119_120140" #default export
+  export_name <- "OUS_20230509_081427" #default export
 } else if (length(args) != 0) {
   export_name <- args[1]
 }
@@ -52,8 +52,20 @@ items <- read_csv(glue("{export_folder}/{export_name}_Items.csv"), skip = 1) %>%
   )) %>%
   mutate(formatname = if_else(categorical == 1, lead(formatname), formatname)) %>%
   left_join(cl, by = "formatname") %>%
-  rename_all(tolower)
+  rename_all(tolower) %>% 
+  mutate(cols_abb = case_when(
+    datatype == "date" ~ "D",
+    datatype == "datetime" ~ "T",
+    datatype == "double" ~ "d",
+    datatype == "integer" ~ "i",
+    datatype == "string" ~ "c",
+    datatype == "text" ~ "c"
+  ))
 
+  
+
+
+col_types <- setNames(as.list(items$cols_abb), items$id)
 
 
 prefix <- str_sub(export_folder, -19)
@@ -61,10 +73,11 @@ raw <- tibble(files = list.files(export_folder)) %>%
   mutate(
     id = str_remove(files, paste0(prefix, "_")),
     id = str_remove(id, ".csv"),
-    id = str_to_lower(id)
+    id = str_to_lower(id),
+    files = paste0(export_folder, "/", files)
   ) %>%
   filter(!(id %in% c("items", "codelists", "readme.txt"))) %>%
-  mutate(txt = map(paste0(export_folder, "/", files), read_csv, skip = 1)) %>%
+  mutate(txt = map(files, read_csv, col_types = col_types, skip = 1)) %>%
   mutate(txt = map(txt, rename_all, tolower)) %>%
   mutate(txt = map(txt, labeliser, codelist = items)) %>%
   mutate(data = map(txt, factoriser, codelist = items)) %>%

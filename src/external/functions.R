@@ -13,20 +13,33 @@ factoriser <- function(data, codelist = items, delabel = TRUE) {
     ct <- y %>%
       slice(i) %>%
       unnest(cols = c(value_labels))  
-    labs <- ct[["codevalue"]]
-    names(labs) <- ct[["codetext"]]
-    
+
+   
     name1 <- y$id[[i]] 
     name2 <- paste0(y$id[[i]],"cd")
     
+    
+    labs <- ct[["codevalue"]]
+
+    if (all(ct$datatype == "integer")) {
+      # convert my_column to numeric
+     labs <- as.numeric(labs)
+    }
+    names(labs) <- ct[["codetext"]]
+    
+    if(!all(is.na(data[[name2]]))){
     data <- data %>%
-      mutate_at(name2, as.numeric) %>%
+      #mutate_at(name2, as.character) %>%
       mutate_at(name2, haven::labelled, labels = labs) %>%
       mutate(!!name1 := as_factor(!!sym(name2), ordered = TRUE)) 
+    
+    if (delabel == TRUE && all(ct$datatype == "integer") ) data[[name2]] <- as.integer(data[[name2]])
+    
+    }
   }
   
-  if (delabel == TRUE) mutate_if(data, haven::is.labelled, as.numeric)
-  
+
+ 
   return(data)
 }
 
@@ -48,25 +61,11 @@ pick <- function(db, name) {
   db %>% dplyr::filter(id == name) %>% purrr::pluck("data",1)
 }
 
-remove_cd <- function(data, codelist = items){
-  x <- names(data)
-  cdlist <- codelist %>% 
-    filter(id %in% x) %>%
-    filter(str_detect(label, "- Code")) %>% 
-    select(id) %>% 
-    deframe
-  
-  if(length(cdlist) == 0) {
-    return(data)
-  }
-  
-  out <- data %>% 
-    select(!any_of(cdlist))
-  
-  return(out)
-}
 
 
+###################
+# Functions for tables
+##################
 mean_sd <- function(data, var, group, digits = 1) {
   var <- ensym(var)
   group <- ensym(group)
