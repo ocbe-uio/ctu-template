@@ -1,3 +1,5 @@
+
+
 factoriser <- function(data, codelist = items, delabel = TRUE) {
   x <- names(data)
   y <- codelist %>%
@@ -12,36 +14,44 @@ factoriser <- function(data, codelist = items, delabel = TRUE) {
   for (i in 1:length(y$id)){
     ct <- y %>%
       slice(i) %>%
-      unnest(cols = c(value_labels))  
-
-   
+      unnest(cols = c(value_labels)) %>% 
+      unique()
+    
     name1 <- y$id[[i]] 
     name2 <- paste0(y$id[[i]],"cd")
     
     
-    labs <- ct[["codevalue"]]
+    if(all(ct[["datatype"]] == "integer")){
+      
+      
+      labs <- as.numeric(ct[["codevalue"]])
+      names(labs) <- ct[["codetext"]]
 
-    if (all(ct$datatype == "integer")) {
-      # convert my_column to numeric
-     labs <- as.numeric(labs)
-    }
-    names(labs) <- ct[["codetext"]]
-    
-    if(!all(is.na(data[[name2]]))){
-    data <- data %>%
-      #mutate_at(name2, as.character) %>%
+      data <- data %>%
+      mutate_at(name2, as.numeric) %>%
       mutate_at(name2, haven::labelled, labels = labs) %>%
-      mutate(!!name1 := as_factor(!!sym(name2), ordered = TRUE)) 
-    
-    if (delabel == TRUE && all(ct$datatype == "integer") ) data[[name2]] <- as.integer(data[[name2]])
-    
+      mutate(!!name1 := as_factor(!!sym(name2), ordered = FALSE)) 
     }
+    
+    if(all(ct[["datatype"]] == "string")){
+      
+      labs <- ct[["codevalue"]]
+      names(labs) <- ct[["codetext"]]
+      
+
+      data <- data %>%
+        mutate_at(name2, as.character) %>%
+        mutate_at(name2, haven::labelled, labels = labs) %>%
+        mutate(!!name1 := as_factor(!!sym(name2), ordered = FALSE)) 
+    }
+      
+      #if (delabel == TRUE && all(ct$datatype == "integer") ) data[[name2]] <- as.integer(data[[name2]])
+      
   }
   
-
- 
   return(data)
 }
+
 
 
 labeliser <- function(data, codelist = items){
@@ -61,7 +71,49 @@ pick <- function(db, name) {
   db %>% dplyr::filter(id == name) %>% purrr::pluck("data",1)
 }
 
+remove_fct <- function(data, codelist = items) {
+  #Function to remove the factor and only retain the value labelled 
+  #variable for export. 
+  x <- names(data)
+  cd1 <- codelist %>%
+    filter(id %in% x) %>%
+    filter(categorical == 1) %>%
+    select(id) %>% 
+    deframe()
+  cd2 <- codelist %>%
+    filter(id %in% x) %>%
+    filter(categorical == 2) %>%
+    select(id) %>% 
+    deframe()
+  
+  if(length(cd1) == 0) {
+    return(data)
+  } else {
+  data %>% 
+    select(-all_of(cd1)) %>% 
+    rename_with(~ str_sub(.x, end = -3), .cols = all_of(cd2))  %>% 
+    return()
+  }
+}
 
+remove_cd <- function(data, codelist = items) {
+  #Function to remove the "cd" variables 
+  x <- names(data)
+  
+  cd2 <- codelist %>%
+    filter(id %in% x) %>%
+    filter(categorical == 2) %>%
+    select(id) %>% 
+    deframe()
+  
+  if(length(cd2) == 0) {
+    return(data)
+  } else {
+    data %>% 
+      select(-all_of(cd2)) %>% 
+      return()
+  }
+}
 
 ###################
 # Functions for tables
